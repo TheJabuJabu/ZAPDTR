@@ -1,3 +1,11 @@
+/*
+ * @brief ZText.cpp - Handles parsing and processing of text/message data from ROM files
+ * 
+ * This file implements the ZText class which handles parsing and processing of 
+ * text/message data from ROM files. It specifically handles message entries that
+ * contain text box information, message content, and control codes.
+ */
+
 #include "ZText.h"
 
 #include "Globals.h"
@@ -7,14 +15,47 @@
 #include "Utils/StringHelper.h"
 #include "ZFile.h"
 
+// Register this class as a file node type that can handle text resources
 REGISTER_ZFILENODE(Text, ZText);
 
+/*
+ * @brief Implementation of text/message data handling from ROM files
+ *
+ * The ZText class handles parsing and processing of text/message data,
+ * specifically dealing with:
+ * - Message entries containing text box information
+ * - Message content parsing
+ * - Control code processing
+ * - Support for both regular and PAL language formats
+ */
+
+/*
+ * @brief Constructor - Initializes a new ZText resource
+ * @param nParent Parent ZFile that contains this resource
+ * 
+ * Registers required attributes:
+ * - CodeOffset: Offset where message code data begins
+ * - LangOffset: Optional offset for language-specific data (default: 0)
+ */
 ZText::ZText(ZFile* nParent) : ZResource(nParent)
 {
 	RegisterRequiredAttribute("CodeOffset");
 	RegisterOptionalAttribute("LangOffset", "0");
 }
 
+/*
+ * @brief Parses raw text data from the ROM file
+ * 
+ * This method processes the raw text data by:
+ * 1. Reading message entries from the code segment
+ * 2. Handling both regular and PAL language formats
+ * 3. Processing control codes and message content
+ * 4. Managing message entry properties like:
+ *    - Message ID
+ *    - Textbox type and position
+ *    - Segment ID and offsets
+ *    - Control codes and their parameters
+ */
 void ZText::ParseRawData()
 {
 	ZResource::ParseRawData();
@@ -39,13 +80,17 @@ void ZText::ParseRawData()
 	else
 		codeData = Globals::Instance->GetBaseromFile(Globals::Instance->baseRomPath.string() + "code");
 
+	// Process message entries until terminating ID is found (0xFFFC or 0xFFFF)
 	while (true)
 	{
 		MessageEntry msgEntry;
+		// Parse message header - ID and textbox properties
 		msgEntry.id = BitConverter::ToInt16BE(codeData, currentPtr + 0);
+		// Extract textbox type (high nibble) and Y position (low nibble)
 		msgEntry.textboxType = (codeData[currentPtr + 2] & 0xF0) >> 4;
 		msgEntry.textboxYPos = (codeData[currentPtr + 2] & 0x0F);
 
+		// Handle PAL vs non-PAL language format differences
 		if (isPalLang)
 		{
 			msgEntry.segmentId = (codeData[langPtr + 0]);
@@ -121,16 +166,28 @@ void ZText::ParseRawData()
 	int bp2 = 0;
 }
 
+/*
+ * @brief Returns the source type name for this resource
+ * @return The string "u8" indicating unsigned 8-bit data type
+ */
 std::string ZText::GetSourceTypeName() const
 {
 	return "u8";
 }
 
+/*
+ * @brief Returns the size of the raw text data in bytes
+ * @return Size of the resource data (1 byte per character)
+ */
 size_t ZText::GetRawDataSize() const
 {
 	return 1;
 }
 
+/*
+ * @brief Returns the resource type identifier
+ * @return ZResourceType::Text indicating this is a text resource type
+ */
 ZResourceType ZText::GetResourceType() const
 {
 	return ZResourceType::Text;

@@ -1,3 +1,11 @@
+/*
+ * @brief Base class for handling game resources from ROM files
+ *
+ * ZResource serves as the base class for all resource types that can be extracted
+ * from ROM files. It provides common functionality for parsing, declaring, and
+ * managing resource data and attributes.
+ */
+
 #include "ZResource.h"
 
 #include <cassert>
@@ -11,6 +19,10 @@
 #include <ZDisplayList.h>
 #include <ZArray.h>
 
+/*
+ * @brief Constructs a new resource with the given parent file
+ * @param nParent Pointer to the parent ZFile containing this resource
+ */
 ZResource::ZResource(ZFile* nParent)
 {
 	// assert(nParent != nullptr);
@@ -29,6 +41,11 @@ ZResource::ZResource(ZFile* nParent)
 	RegisterOptionalAttribute("Static", "Global");
 }
 
+/*
+ * @brief Extracts resource data from an XML element
+ * @param reader XML element containing resource attributes
+ * @param nRawDataIndex Starting index of raw data in the file
+ */
 void ZResource::ExtractFromXML(tinyxml2::XMLElement* reader, offset_t nRawDataIndex)
 {
 	rawDataIndex = nRawDataIndex;
@@ -55,6 +72,10 @@ void ZResource::ExtractFromXML(tinyxml2::XMLElement* reader, offset_t nRawDataIn
 	}
 }
 
+/*
+ * @brief Extracts resource data directly from a file
+ * @param nRawDataIndex Starting index of raw data in the file
+ */
 void ZResource::ExtractFromFile(offset_t nRawDataIndex)
 {
 	rawDataIndex = nRawDataIndex;
@@ -67,6 +88,10 @@ void ZResource::ExtractFromFile(offset_t nRawDataIndex)
 	CalcHash();
 }
 
+/*
+ * @brief Parses resource attributes from XML
+ * @param reader XML element to parse attributes from
+ */
 void ZResource::ParseXML(tinyxml2::XMLElement* reader)
 {
 	if (reader != nullptr)
@@ -172,22 +197,59 @@ void ZResource::ParseXML(tinyxml2::XMLElement* reader)
 	}
 }
 
+/**
+ * @brief Default implementation for parsing raw resource data
+ * 
+ * This method should be overridden by derived classes to implement specific
+ * parsing logic for their resource type.
+ */
 void ZResource::ParseRawData()
 {
 }
 
+/**
+ * @brief Declares references to other resources
+ * 
+ * Called during initial resource processing to declare dependencies on other resources.
+ * Should be overridden by derived classes that need to reference other resources.
+ * 
+ * @param prefix Naming prefix to use for declarations
+ */
 void ZResource::DeclareReferences([[maybe_unused]] const std::string& prefix)
 {
 }
 
+/**
+ * @brief Late-stage parsing of raw resource data
+ * 
+ * Called after initial parsing to handle any data that requires other resources
+ * to be parsed first. Should be overridden by derived classes if needed.
+ */
 void ZResource::ParseRawDataLate()
 {
 }
 
+/**
+ * @brief Late-stage declaration of references
+ * 
+ * Called after initial reference declaration to handle any references that depend
+ * on other resources being declared first. Should be overridden if needed.
+ * 
+ * @param prefix Naming prefix to use for declarations
+ */
 void ZResource::DeclareReferencesLate([[maybe_unused]] const std::string& prefix)
 {
 }
 
+/**
+ * @brief Declares a variable for this resource
+ * 
+ * Creates and adds a declaration to the parent file's declaration list.
+ * 
+ * @param prefix Prefix to use for auto-generated names
+ * @param bodyStr The content/body of the declaration
+ * @return Pointer to the created Declaration
+ */
 Declaration* ZResource::DeclareVar(const std::string& prefix, const std::string& bodyStr)
 {
 	std::string auxName = name;
@@ -202,6 +264,14 @@ Declaration* ZResource::DeclareVar(const std::string& prefix, const std::string&
 	return decl;
 }
 
+/**
+ * @brief Saves the resource to an external file
+ * 
+ * Base implementation does nothing. Override in derived classes to implement
+ * saving functionality.
+ * 
+ * @param outFolder Output folder path
+ */
 void ZResource::Save([[maybe_unused]] const fs::path& outFolder)
 {
 }
@@ -277,6 +347,14 @@ std::string ZResource::GetDefaultName(const std::string& prefix) const
 	                             rawDataIndex);
 }
 
+/**
+ * @brief Generates source code output for this resource
+ * 
+ * Creates declarations and generates the C source code representation
+ * of this resource.
+ * 
+ * @param prefix Prefix to use for auto-generated names
+ */
 void ZResource::GetSourceOutputCode([[maybe_unused]] const std::string& prefix)
 {
 	std::string bodyStr = GetBodySourceCode();
@@ -310,6 +388,15 @@ void ZResource::GetSourceOutputCode([[maybe_unused]] const std::string& prefix)
 	}
 }
 
+/**
+ * @brief Generates header output for OTR mode
+ * 
+ * Creates resource definitions and declarations for the OTR asset system.
+ * 
+ * @param prefix Prefix to use for declarations
+ * @param nameSet Set of used names to avoid duplicates
+ * @return Generated header code as string
+ */
 std::string ZResource::GetSourceOutputHeader([[maybe_unused]] const std::string& prefix, std::set<std::string> *nameSet)
 {
 	if (Globals::Instance->otrMode && genOTRDef)
@@ -398,6 +485,12 @@ ZResourceType ZResource::GetResourceType() const
 	return ZResourceType::Error;
 }
 
+/**
+ * @brief Calculates a hash value for this resource
+ * 
+ * Base implementation sets hash to 0. Override in derived classes
+ * to implement resource-specific hashing.
+ */
 void ZResource::CalcHash()
 {
 	hash = 0;
@@ -424,6 +517,12 @@ void ZResource::RegisterOptionalAttribute(const std::string& attr, const std::st
 	registeredAttributes[attr] = resAtrr;
 }
 
+/*
+ * @brief Converts a segmented address to file space offset
+ * @param segmentedAddress The segmented address to convert
+ * @param parentBaseAddress Base address of the parent file
+ * @return Converted file offset
+ */
 offset_t Seg2Filespace(segptr_t segmentedAddress, uint32_t parentBaseAddress)
 {
 	offset_t currentPtr = GETSEGOFFSET(segmentedAddress);
